@@ -38,8 +38,8 @@ Before running the application, ensure the following prerequisites are installed
 Download or clone this repository to your local machine:
 
 ```bash
-git clone https://github.com/yourusername/youtube-mp3-downloader.git
-cd youtube-mp3-downloader
+git clone https://github.com/mambuzrrr/YouTube_Downloader.git
+cd YouTube_Downloader
 ```
 
 ### 2. Install Python Dependencies
