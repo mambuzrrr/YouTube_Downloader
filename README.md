@@ -1,3 +1,7 @@
+> [!CAUTION]
+> ### Please use this program for private purposes, never offer a YouTube downloader publicly.
+---
+
 # 🎵 YouTube MP3 Downloader
 
 A simple, user-friendly YouTube MP3 downloader with a PyQt6 graphical user interface.  
