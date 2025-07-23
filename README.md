@@ -90,7 +90,7 @@ If you prefer manual installation, download FFmpeg from https://ffmpeg.org/downl
 ## How to Use the Downloader
 Run the application:
 ```bash
-python downloader.py
+python YT-DL.py
 ```
 - The GUI will open. Paste a YouTube video or playlist URL into the text field.
 - Select the output folder where MP3 files should be saved. Default is your current working directory.
