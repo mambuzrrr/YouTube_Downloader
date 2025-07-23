@@ -1,6 +1,11 @@
 > [!CAUTION]
-> ### Please use this program for private purposes, never offer a YouTube downloader publicly.
+> ### This tool is intended for personal, educational, or archival use only. Do not use or distribute it for commercial purposes or host it as a public service. Downloading copyrighted content from YouTube may violate their Terms of Service.
+
+> [!IMPORTANT]
+> ### Use this software only for private use. Do not operate or share this as a public downloader. Respect YouTube’s Terms of Service and copyright laws.
+
 ---
+
 
 # 🎵 YouTube MP3 Downloader
 
