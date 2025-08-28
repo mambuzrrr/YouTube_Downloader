@@ -139,6 +139,34 @@ Run the batch installer or manually install and add FFmpeg to PATH.
 
 ---
 
+## Changelog
+
+**Whats new / improved**
+- **Format selection (MP3 / MP4)**  
+  - Added a dropdown to choose output format (MP3 = audio-only, MP4 = merged video+audio).
+  - MP3 uses FFmpeg postprocessor to extract audio.  
+  - MP4 downloads best video + best audio and merges into `.mp4`.
+
+- **Open output folder button**  
+  - New button to open the chosen output directory.
+
+- **Title prefetch & improved status messages**  
+  - Tries to fetch video/playlist info before download and shows loaded title (playlist name + item count where applicable).
+  - Progress messages include more useful details (title, percent, speed, ETA).
+
+- **Better threading & error handling**  
+  - Downloads run in a separate `QThread` and stop/cleanup logic is improved.
+  - Errors are logged and shown in message dialogs.
+
+- **Small UX improvements**  
+  - Log is cleared at start of a new download - status label shows concise context info.
+  - Language text lookups include safe fallbacks to avoid crashes when entries are missing.
+
+**Notes**
+- FFmpeg is still required for MP3 extraction and for merging MP4. Ensure `ffmpeg` is on PATH.
+
+---
+
 ## License
 This project is released under the MIT License.
 
