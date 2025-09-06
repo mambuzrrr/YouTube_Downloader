@@ -19,13 +19,14 @@ Downloads audio only (MP3) from YouTube videos or playlists with selectable bitr
 
 ## Features
 
-- Download audio from YouTube videos as MP3 files  
-- Support for downloading entire playlists  
-- Selectable MP3 quality: 128, 192, 256, or 320 kbps  
+- Download audio from YouTube videos (MP3, M4A, OPUS, WAV, or keep the original audio container)  
+- Download video (MP4) - merges best video + best audio automatically  
+- Optionally embed metadata (ID3) and embed/save thumbnails (cover art)  
+- Selectable audio quality: 128, 192, 256, or 320 kbps  
 - Real-time progress display and detailed log output  
-- Ability to stop/cancel ongoing downloads  
-- Multi-language interface (English & German)  
-- Clean, modern dark mode UI powered by `qdarkstyle`
+- Stop/cancel ongoing download at any time  
+- Multi-language interface (English & German) with tooltips  
+- Dark theme powered by `qdarkstyle`
 
 ---
 
@@ -33,13 +34,11 @@ Downloads audio only (MP3) from YouTube videos or playlists with selectable bitr
 
 Before running the application, ensure the following prerequisites are installed on your system:
 
-- **Python 3.8 or newer**  
 - Python packages (install via `pip`):  
-  - `yt-dlp` (YouTube downloader backend)  
-  - `PyQt6` (GUI framework)  
-  - `qdarkstyle` (optional dark theme stylesheet)  
-- **FFmpeg** installed and accessible via your system PATH  
-  (required for audio extraction and conversion to MP3)  
+  - `yt-dlp`  
+  - `PyQt6`  
+  - `qdarkstyle` (optional)  
+- **FFmpeg** installed and available on your system PATH - required for audio extraction, conversion and thumbnail embedding. 
 
 ---
 
@@ -142,36 +141,20 @@ Run the batch installer or manually install and add FFmpeg to PATH.
 
 ---
 
-## Changelog
-
+## Changelog (Sep 06.) Version 1.5.3
 **Whats new / improved**
-- **Format selection (MP3 / MP4)**  
-  - Added a dropdown to choose output format (MP3 = audio-only, MP4 = merged video+audio).
-  - MP3 uses FFmpeg postprocessor to extract audio.  
-  - MP4 downloads best video + best audio and merges into `.mp4`.
-
-- **Open output folder button**  
-  - New button to open the chosen output directory.
-
-- **Title prefetch & improved status messages**  
-  - Tries to fetch video/playlist info before download and shows loaded title (playlist name + item count where applicable).
-  - Progress messages include more useful details (title, percent, speed, ETA).
-
-- **Better threading & error handling**  
-  - Downloads run in a separate `QThread` and stop/cleanup logic is improved.
-  - Errors are logged and shown in message dialogs.
-
-- **Small UX improvements**  
-  - Log is cleared at start of a new download - status label shows concise context info.
-  - Language text lookups include safe fallbacks to avoid crashes when entries are missing.
+- Multi-format audio support: MP3, M4A, OPUS, WAV, and option to keep original audio container.
+- Option to embed metadata (ID3) and embed/save thumbnails.
+- Added WAV output option.
+- Safer filename handling: sanitized titles and unique filename generation to avoid overwrites.
+- FFmpeg detection at startup, clear warning if missing.
+- Clipboard auto-paste for URL on startup.
+- Settings persistence: last folder, quality, format and checkboxes saved in `~/.brejax_settings.json`.
+- Restored & extended UI tooltips (English & German) via `language.py`.
+- Small UX fixes: clear logs at new download start, cleaner threading & cleanup.
 
 **Notes**
 - FFmpeg is still required for MP3 extraction and for merging MP4. Ensure `ffmpeg` is on PATH.
-
----
-
-## License
-This project is released under the MIT License.
 
 ---
 
