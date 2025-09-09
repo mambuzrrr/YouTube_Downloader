@@ -94,3 +94,22 @@ def estimate_total_size_from_entries(entries: List[Dict]) -> int:
         except Exception:
             continue
     return total
+
+def get_video_format(res_label: str) -> str:
+    label = (res_label or "").strip().lower()
+    # mapping to safe <= patterns so yt-dlp falls back gracefully
+    mapping = {
+        "auto (best)": "bestvideo+bestaudio/best",
+        "360p": "bv[height<=360]+ba/best",
+        "480p": "bv[height<=480]+ba/best",
+        "720p": "bv[height<=720]+ba/best",
+        "1080p": "bv[height<=1080]+ba/best",
+        "1440p": "bv[height<=1440]+ba/best",
+        "2160p (4k)": "bv[height<=2160]+ba/best",
+    }
+    # normalize keys
+    for k, v in mapping.items():
+        if k == label:
+            return v
+    # fallback to best
+    return "bestvideo+bestaudio/best"
