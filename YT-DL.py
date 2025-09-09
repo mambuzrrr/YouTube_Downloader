@@ -11,10 +11,14 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 import yt_dlp
 import qdarkstyle
 from language import texts
-import utils #utils.py
+import utils # utils.py
 
 # Settings file
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".brejax_settings.json")
+
+# App version & developer
+APP_VERSION = "1.6.1"
+APP_DEVELOPER = "Rico"
 
 def load_settings():
     try:
@@ -46,15 +50,17 @@ class BrejaxWorker(QtCore.QObject):
 
     def __init__(self, url: str, out_folder: str, quality: int, playlist: bool,
                  format_type: str = 'mp3', embed_metadata: bool = True,
-                 save_thumbnail: bool = True, ffmpeg_path: Optional[str] = None):
+                 save_thumbnail: bool = True, resolution_label: str = "Auto (best)",
+                 ffmpeg_path: Optional[str] = None):
         super().__init__()
         self.url = url
         self.out_folder = out_folder
         self.quality = quality
         self.playlist = playlist
-        self.format_type = format_type  # mp3, m4a, opus, wav, mp4, bestaudio
+        self.format_type = format_type  # mp3, m4a, opus, wav, mp4, best audio, aac, flac, alac, ogg
         self.embed_metadata = embed_metadata
         self.save_thumbnail = save_thumbnail
+        self.resolution_label = resolution_label
         self._is_running = True
         self.ffmpeg_path = ffmpeg_path
 
@@ -72,37 +78,41 @@ class BrejaxWorker(QtCore.QObject):
             'writethumbnail': bool(self.save_thumbnail),
         }
 
-        format_choice = self.format_type.lower()
+        format_choice = (self.format_type or "").lower().strip()
         postprocessors = []
 
+        # Video case (MP4) - allow resolution selection via utils.get_video_format
         if format_choice == 'mp4':
-            options.update({'format': 'bestvideo+bestaudio/best', 'merge_output_format': 'mp4'})
-        elif format_choice == 'mp3':
+            # get format string from utils
+            fmt = utils.get_video_format(self.resolution_label)
+            options.update({'format': fmt, 'merge_output_format': 'mp4'})
+            # merging requires ffmpeg
+            need_ffmpeg_for_merge = True
+        else:
+            need_ffmpeg_for_merge = False
+
+        # Audio extraction/conversion codecs
+        if format_choice in ['mp3', 'm4a', 'opus', 'wav', 'aac', 'flac', 'alac', 'ogg']:
             options.update({'format': 'bestaudio/best'})
+            # set preferredcodec mapping
+            preferredcodec = 'mp3' if format_choice == 'mp3' else (
+                'm4a' if format_choice == 'm4a' else (
+                    'opus' if format_choice == 'opus' else (
+                        'wav' if format_choice == 'wav' else (
+                            'aac' if format_choice == 'aac' else (
+                                'flac' if format_choice == 'flac' else (
+                                    'alac' if format_choice == 'alac' else (
+                                        'ogg' if format_choice == 'ogg' else 'mp3'
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
             postprocessors.append({
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': str(self.quality),
-            })
-        elif format_choice == 'm4a':
-            options.update({'format': 'bestaudio/best'})
-            postprocessors.append({
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'm4a',
-                'preferredquality': str(self.quality),
-            })
-        elif format_choice == 'opus':
-            options.update({'format': 'bestaudio/best'})
-            postprocessors.append({
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'opus',
-                'preferredquality': str(self.quality),
-            })
-        elif format_choice == 'wav':
-            options.update({'format': 'bestaudio/best'})
-            postprocessors.append({
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
+                'preferredcodec': preferredcodec,
                 'preferredquality': str(self.quality),
             })
         elif format_choice in ['bestaudio', 'best audio (no convert)']:
@@ -119,9 +129,15 @@ class BrejaxWorker(QtCore.QObject):
         if postprocessors:
             options['postprocessors'] = postprocessors
 
-        # If conversion or embedding required but ffmpeg missing -> error
-        if postprocessors and not self.ffmpeg_path:
-            self.error.emit("FFmpeg not found. Some postprocessing (convert/embed) requires ffmpeg.")
+        # If conversion/merge/embed required but ffmpeg missing -> error
+        need_ffmpeg = False
+        if postprocessors:
+            need_ffmpeg = True
+        if need_ffmpeg_for_merge:
+            need_ffmpeg = True
+
+        if need_ffmpeg and not self.ffmpeg_path:
+            self.error.emit("FFmpeg not found. Some postprocessing (convert/embed/merge) requires ffmpeg.")
             return
 
         try:
@@ -156,6 +172,7 @@ class BrejaxWorker(QtCore.QObject):
                 msg = "Unknown error during download."
             self.error.emit(msg)
 
+    # (rest unchanged)
     def _attempt_rename_final(self, info_dict, expected_ext):
         title = None
         if isinstance(info_dict, dict):
@@ -262,7 +279,7 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.lang = 'en'
-        self.resize(700, 460)
+        self.resize(760, 520)
         self.worker_thread: Optional[QtCore.QThread] = None
         self.worker: Optional[BrejaxWorker] = None
         self.ffmpeg = utils.find_ffmpeg()
@@ -282,20 +299,27 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.layout.setContentsMargins(15, 15, 15, 15)
         self.font = QtGui.QFont("Segoe UI", 11)
 
-        # Language Switcher
-        lang_layout = QtWidgets.QHBoxLayout()
-        lang_layout.addStretch()
+        # top language + version row
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.addStretch()
         self.lang_label = QtWidgets.QLabel()
         self.lang_label.setFont(self.font)
-        lang_layout.addWidget(self.lang_label)
+        top_row.addWidget(self.lang_label)
         self.lang_combo = QtWidgets.QComboBox()
         self.lang_combo.addItems(["English", "Deutsch"])
         self.lang_combo.setCurrentIndex(0 if self.settings.get("lang", "en") == "en" else 1)
         self.lang_combo.setFont(self.font)
         self.lang_combo.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.lang_combo.currentIndexChanged.connect(self.change_language)
-        lang_layout.addWidget(self.lang_combo)
-        self.layout.addLayout(lang_layout)
+        top_row.addWidget(self.lang_combo)
+
+        # version/developer label
+        self.info_label = QtWidgets.QLabel(f"Version: {APP_VERSION} | Developer: {APP_DEVELOPER}")
+        self.info_label.setFont(QtGui.QFont("Segoe UI", 9))
+        self.info_label.setStyleSheet("color: #aab6c3;")
+        top_row.addWidget(self.info_label)
+        top_row.addStretch()
+        self.layout.addLayout(top_row)
 
         # YouTube Link Input
         self.lbl_url = QtWidgets.QLabel()
@@ -305,15 +329,6 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.url_input.setFont(self.font)
         self.url_input.installEventFilter(self)
         self.layout.addWidget(self.url_input)
-
-        # Auto-paste from clipboard if its URL
-        try:
-            cb = QtWidgets.QApplication.clipboard()
-            clip_text = cb.text().strip()
-            if utils.is_url(clip_text):
-                self.url_input.setText(clip_text)
-        except Exception:
-            pass
 
         # Output folder picker + open folder button
         folder_layout = QtWidgets.QHBoxLayout()
@@ -339,13 +354,14 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
 
         self.layout.addLayout(folder_layout)
 
-        # Quality & Format & Playlist options + extra checkboxes
+        # Quality & Format & Resolution & Playlist options + extra checkboxes
         options_layout = QtWidgets.QHBoxLayout()
         self.lbl_quality = QtWidgets.QLabel()
         self.lbl_quality.setFont(self.font)
         options_layout.addWidget(self.lbl_quality)
 
         self.quality_combo = QtWidgets.QComboBox()
+        # keep previous quality choices but add more presets if you'd like
         self.quality_combo.addItems(["128", "192", "256", "320"])
         self.quality_combo.setCurrentText(str(self.settings.get("quality", "192")))
         self.quality_combo.setFont(self.font)
@@ -356,11 +372,23 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         options_layout.addWidget(self.lbl_format)
 
         self.format_combo = QtWidgets.QComboBox()
-        # added WAV as requested
-        self.format_combo.addItems(["MP3", "M4A", "OPUS", "WAV", "MP4", "Best audio (no convert)"])
+        # more audio options added + mp4 and best-audio
+        self.format_combo.addItems(["MP3", "M4A", "AAC", "OPUS", "WAV", "FLAC", "ALAC", "OGG", "MP4", "Best audio (no convert)"])
         self.format_combo.setCurrentText(self.settings.get("format", "MP3"))
         self.format_combo.setFont(self.font)
+        self.format_combo.currentIndexChanged.connect(self.on_format_changed)
         options_layout.addWidget(self.format_combo)
+
+        # Resolution selector (only relevant for MP4)
+        self.lbl_resolution = QtWidgets.QLabel()
+        self.lbl_resolution.setFont(self.font)
+        self.lbl_resolution.setText("Resolution:")
+        options_layout.addWidget(self.lbl_resolution)
+        self.resolution_combo = QtWidgets.QComboBox()
+        self.resolution_combo.addItems(["Auto (best)", "360p", "480p", "720p", "1080p", "1440p", "2160p (4K)"])
+        self.resolution_combo.setCurrentText(self.settings.get("resolution", "Auto (best)"))
+        self.resolution_combo.setFont(self.font)
+        options_layout.addWidget(self.resolution_combo)
 
         self.playlist_checkbox = QtWidgets.QCheckBox()
         self.playlist_checkbox.setFont(self.font)
@@ -381,6 +409,9 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
 
         options_layout.addStretch()
         self.layout.addLayout(options_layout)
+
+        # Hide resolution combo if format not MP4 initially
+        self.on_format_changed(self.format_combo.currentIndex())
 
         # Status label
         self.status_label = QtWidgets.QLabel("")
@@ -441,6 +472,9 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.quality_combo.setToolTip(g('quality_combo_tooltip', 'Choose bitrate quality'))
         self.lbl_format.setText(g('format_label', 'Format:'))
         self.format_combo.setToolTip(g('format_combo_tooltip', 'Choose output format'))
+        # resolution
+        self.lbl_resolution.setToolTip("Choose video resolution (only used for MP4).")
+        self.resolution_combo.setToolTip("Select desired MP4 resolution; if not available yt-dlp will pick nearest.")
         # playlist
         self.playlist_checkbox.setText(g('playlist_checkbox', 'Download playlist'))
         self.playlist_checkbox.setToolTip(g('playlist_tooltip', 'Download playlist if URL points to one'))
@@ -464,6 +498,13 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.set_texts()
         self.settings['lang'] = self.lang
         save_settings(self.settings)
+
+    def on_format_changed(self, index):
+        # Show/hide resolution controls depending on format
+        fmt = self.format_combo.currentText().lower()
+        is_mp4 = (fmt == 'mp4')
+        self.lbl_resolution.setVisible(is_mp4)
+        self.resolution_combo.setVisible(is_mp4)
 
     def get_grey_button_style(self, stop=False):
         return f"""
@@ -540,6 +581,7 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         embed_metadata = self.embed_metadata_cb.isChecked()
         save_thumbnail = self.save_thumbnail_cb.isChecked()
         auto_open = self.auto_open_cb.isChecked()
+        resolution_label = self.resolution_combo.currentText()
 
         # Save settings
         self.settings['last_folder'] = out_folder
@@ -549,10 +591,11 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.settings['embed_metadata'] = embed_metadata
         self.settings['save_thumbnail'] = save_thumbnail
         self.settings['auto_open'] = auto_open
+        self.settings['resolution'] = resolution_label
         save_settings(self.settings)
 
-        # if postprocessors required but ffmpeg missing, alert
-        need_ffmpeg = format_choice in ['mp3', 'm4a', 'opus', 'wav'] or embed_metadata or save_thumbnail
+        # determine if ffmpeg is needed:
+        need_ffmpeg = format_choice in ['mp3', 'm4a', 'opus', 'wav', 'aac', 'flac', 'alac', 'ogg'] or embed_metadata or save_thumbnail or format_choice == 'mp4'
         if need_ffmpeg and not self.ffmpeg:
             QtWidgets.QMessageBox.critical(self, "FFmpeg missing", "FFmpeg not found. Install ffmpeg and add it to PATH for conversion and embedding.")
             return
@@ -567,6 +610,8 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
         self.log(f"Quality: {quality} kbps")
         self.log(f"Playlist mode: {'On' if playlist else 'Off'}")
         self.log(f"Format: {format_choice.upper()}")
+        if format_choice == 'mp4':
+            self.log(f"Resolution: {resolution_label}")
         self.log(f"Embed metadata: {'Yes' if embed_metadata else 'No'}")
         self.log(f"Save thumbnail: {'Yes' if save_thumbnail else 'No'}")
 
@@ -575,9 +620,10 @@ class BrejaxDownloaderUI(QtWidgets.QWidget):
 
         # create worker
         self.worker = BrejaxWorker(url, out_folder, quality, playlist,
-                                format_type=format_choice,
+                                   format_type=format_choice,
                                    embed_metadata=embed_metadata,
-                                        save_thumbnail=save_thumbnail,
+                                   save_thumbnail=save_thumbnail,
+                                   resolution_label=resolution_label,
                                    ffmpeg_path=self.ffmpeg)
         self.worker_thread = QtCore.QThread()
         self.worker.moveToThread(self.worker_thread)
