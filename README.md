@@ -10,10 +10,10 @@
 ---
 
 
-# 🎵 YouTube MP3 Downloader
+# 🎵 DevLuxe - YouTube Downloader (v1.6.1)
 
-A simple, user-friendly YouTube MP3 downloader with a PyQt6 graphical user interface.  
-Downloads audio only (MP3) from YouTube videos or playlists with selectable bitrate quality.
+A simple, user-friendly YouTube MP3/MP4 downloader with a PyQt6 graphical user interface.  
+Downloads audio & video's from YouTube videos or playlists with selectable bitrate quality.
 
 ---
 
@@ -27,6 +27,8 @@ Downloads audio only (MP3) from YouTube videos or playlists with selectable bitr
 - Stop/cancel ongoing download at any time  
 - Multi-language interface (English & German) with tooltips  
 - Dark theme powered by `qdarkstyle`
+---
+### A proper installer will be available soon. The tool will then be launchable via a single `.exe`. However, you will still need to set the PATH for FFmpeg yourself - either through a batch file or manually (your choice).
 
 ---
 
@@ -116,11 +118,14 @@ python YT-DL.py
 
 ## Important Notes
 
-- Currently, this downloader only supports audio-only MP3 downloads.
-- Video downloads (e.g., MP4) are not supported yet but may be added in future versions.
-- FFmpeg must be installed and accessible via your system PATH for audio extraction to work.
-- The downloader uses yt-dlp internally, which supports a wide variety of YouTube URLs and playlist formats.
-- If you experience errors related to FFmpeg, double-check your FFmpeg installation and PATH variable.
+- The downloader now supports both **audio** and **video** output:
+  - Audio formats: **MP3, M4A, AAC, OPUS, WAV, FLAC, ALAC, OGG** (conversion requires FFmpeg).
+  - Video format: **MP4** (downloads best video + best audio and merges them with FFmpeg). You can choose the target resolution in the UI (Auto / 360p / 480p / 720p / 1080p / 1440p / 2160p).
+- **FFmpeg is required** and must be installed and available on your system `PATH` for audio conversion, metadata embedding, thumbnail embedding, and merging video+audio into MP4.
+- The app stores a single settings file in the user home (e.g. `~/.brejax_settings.json`) to persist preferences (last folder, format, bitrate, resolution, checkboxes). **No per-download JSON files** are written by default.
+- If a selected MP4 resolution isn't available for a particular video, `yt-dlp` will select the closest available stream that matches your choice.
+- This tool runs locally - no uploads to third-party servers. Use it only for private, educational, or archival purposes and respect YouTube's Terms of Service and copyright law.
+- If you see FFmpeg-related errors, verify `ffmpeg -version` works in a terminal and that the executable is on your PATH.
 
 ---
 
@@ -141,8 +146,11 @@ Run the batch installer or manually install and add FFmpeg to PATH.
 
 ---
 
-## Changelog (Sep 06.) Version 1.5.3
+## Changelog (Sep 09.) Version 1.6.1
 **Whats new / improved**
+- MP4 resolution selection - choose resolution for video downloads (Auto / 360p / 480p / 720p / 1080p / 1440p / 2160p). The app maps the selected label to a `yt-dlp` format string and merges best video + best audio using FFmpeg.
+- Expanded audio codec support - added AAC, FLAC, ALAC, OGG (in addition to MP3, M4A, OPUS, WAV). 
+- resolution dropdown visibility toggles automatically for non-MP4 formats.
 - Multi-format audio support: MP3, M4A, OPUS, WAV, and option to keep original audio container.
 - Option to embed metadata (ID3) and embed/save thumbnails.
 - Added WAV output option.
